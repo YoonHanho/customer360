@@ -1,0 +1,7 @@
+﻿nba_id,trigger_type,trigger_cond,action,template
+NBA01,maturity,만기 30일 이내,만기 자금 운용 계획 확인,만기상담
+NBA02,churn,이탈 위험 55점 이상,선제적 관계 케어,케어콜
+NBA03,allocation,목표 비중 점검 필요,자산배분 리뷰,포트폴리오리뷰
+NBA04,profile,프로파일 최신화 필요,투자정보 최신화,정보확인
+NBA05,digital,관심 시그널 감지,관심 주제 자료 안내,관심자료
+NBA06,market,하우스뷰 변경,시장 영향도 상담,시장브리핑
