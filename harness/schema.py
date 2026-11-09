@@ -1,17 +1,24 @@
-"""Required CSV columns for the synthetic customer-360 data contract."""
+"""Required CSV columns for the customer-360 mock dashboard."""
 
 REQUIRED_COLUMNS = {
-    "customers": {"customer_id", "name_masked", "segment", "risk_profile", "branch", "manager", "join_date"},
-    "accounts": {"account_id", "customer_id", "type", "balance", "eval_amount"},
-    "holdings": {"holding_id", "customer_id", "product_id", "amount", "pnl", "maturity_date"},
-    "products": {"product_id", "name", "category", "risk_grade"},
-    "transactions": {"tx_id", "customer_id", "date", "type", "amount", "channel"},
-    "consultations": {"consult_id", "customer_id", "date", "channel", "topic_code", "resolved", "csat", "summary_masked"},
-    "chatbot_logs": {"log_id", "customer_id", "date", "intent_code", "escalated"},
-    "market_series": {"date", "index_code", "close"},
-    "news": {"news_id", "date", "tag", "sentiment", "title_masked", "source"},
-    "house_view": {"report_id", "date", "asset_class", "outlook", "headline", "report_name"},
-    "allocation_strategy": {"segment", "asset_class", "target_pct"},
-    "nba_catalog": {"nba_id", "trigger_type", "trigger_cond", "action", "template"},
-    "nba_history": {"nba_run_id", "customer_id", "nba_id", "date", "status"},
+    "고객": {
+        "고객번호", "고객등급", "연령", "성별", "투자성향", "TM동의", "EMAIL동의",
+        "PUSH동의", "관리점", "PB", "가입일", "주거래상품", "주거래상품비중",
+        "직장정보", "만기일",
+    },
+    "잔고추이": {"고객번호", "기준월", "자산"},
+    "자산비중": {"고객번호", "자산구분", "비중"},
+    "보유상품": {
+        "고객번호", "잔고순위", "상품명", "자산군", "매입금액", "평가금액", "수익률",
+    },
+    "거래금액": {"고객번호", "자산군", "기준월", "거래금액"},
+    "투자수익률": {"고객번호", "기준월", "투자수익률(1년)"},
+    "회전율": {"고객번호", "자산구분", "회전율"},
+    "앱접속일수": {"고객번호", "기준월", "접속일수"},
+    "앱메뉴TOP": {"고객번호", "순위", "메뉴명"},
+    "검색어": {"고객번호", "순위", "검색어"},
+    "챗봇상담": {"고객번호", "챗봇상담내역"},
+    "고객센터상담": {"고객번호", "고객센터상담내역"},
+    "예측": {"고객번호", "예측주제", "예측점수", "예측해석"},
+    "NBA": {"고객번호", "제안순서", "NextBestAction"},
 }

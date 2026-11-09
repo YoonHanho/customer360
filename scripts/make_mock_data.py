@@ -1,17 +1,34 @@
-"""Create deterministic, entirely synthetic customer-360 dashboard CSVs."""
+"""Generate deterministic, entirely synthetic customer-360 dashboard CSVs."""
 
 from __future__ import annotations
 
 import csv
+import math
 import random
-from datetime import date, timedelta
+from datetime import date
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data"
 RNG = random.Random(360)
-TODAY = date(2026, 10, 22)
+TODAY = date(2026, 10, 1)
+CUSTOMER_IDS = [str(12345678 + index) for index in range(10)]
+ASSET_CLASSES = ["국내주식", "해외주식", "ETF", "펀드", "채권", "기타"]
+TRADE_ASSET_CLASSES = ASSET_CLASSES[:-1]
+PREDICTION_TOPICS = [
+    "국내주식", "해외주식", "ETF", "IRP", "ISA", "DC", "ELS", "랩어카운트",
+    "개인연금", "개인투자용국채", "채권", "로보어드바이저", "펀드", "순입금",
+    "순출금", "이탈",
+]
+PRODUCT_NAMES = {
+    "국내주식": ["삼성전자", "SK하이닉스", "현대차", "NAVER", "KB금융", "삼성전자우"],
+    "해외주식": ["애플", "마이크로소프트", "엔비디아", "아마존", "코카콜라", "테슬라"],
+    "ETF": ["KODEX 200", "TIGER 미국S&P500", "ACE 미국나스닥100", "KODEX 배당가치", "TIGER 단기채권"],
+    "펀드": ["글로벌 배당주 펀드", "인덱스 성장 펀드", "아시아 채권 펀드", "멀티에셋 인컴 펀드"],
+    "채권": ["국고채 3년", "국고채 5년", "우량 회사채", "특수채 2년"],
+    "기타": ["CMA 예수금", "발행어음", "금 현물", "대체투자 상품"],
+}
 
 
 def write_csv(name: str, rows: list[dict]) -> None:
@@ -23,153 +40,280 @@ def write_csv(name: str, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
+def month_range(end: date, count: int) -> list[str]:
+    end_index = end.year * 12 + end.month - 1
+    result = []
+    for offset in range(count - 1, -1, -1):
+        year, month_index = divmod(end_index - offset, 12)
+        result.append(f"{year:04d}-{month_index + 1:02d}")
+    return result
+
+
+MONTHS_36 = month_range(TODAY, 36)
+MONTHS_12 = MONTHS_36[-12:]
+
+
 customers = []
-names = ["김*서", "이*훈", "박*연", "최*민", "정*희", "강*우", "조*은", "윤*석", "장*아", "임*준"]
-segments = ["프리미어", "골드", "골드", "프리미어", "실버", "골드", "실버", "프리미어", "골드", "실버"]
+customer_tiers = ["VIP", "골드", "골드", "VIP", "일반", "골드", "일반", "VIP", "골드", "일반"]
 risks = ["위험중립형", "적극투자형", "안정추구형", "공격투자형", "안정형", "위험중립형", "안정추구형", "적극투자형", "위험중립형", "안정형"]
-goals = ["은퇴 준비", "자산 증식", "주택 자금", "자산 증식", "교육 자금", "은퇴 준비", "현금흐름", "상속·증여", "자산 증식", "교육 자금"]
-for i in range(10):
-    customers.append({
-        "customer_id": f"C{1001+i}", "name_masked": names[i], "segment": segments[i],
-        "risk_profile": risks[i], "branch": ["강남", "여의도", "판교"][i % 3],
-        "manager": f"PB {chr(65+i)}", "join_date": str(TODAY - timedelta(days=900 + i * 317)),
-        "aum": 180_000_000 + i * 92_000_000, "aum_change": round(RNG.uniform(-3, 7), 1),
-        "churn_risk": [28, 72, 61, 24, 48, 83, 65, 32, 57, 76][i],
-        "health_score": [82, 48, 59, 88, 68, 41, 54, 85, 63, 46][i],
-        "volatility": round(RNG.uniform(5.5, 16.5), 1), "mdd": round(RNG.uniform(4, 19), 1),
-        "sharpe": round(RNG.uniform(0.45, 1.5), 2), "var_95": round(RNG.uniform(2, 8), 1),
-        "turnover": round(RNG.uniform(0.5, 4.0), 1), "wallet_share": RNG.randint(24, 75),
-        "investment_goal": goals[i], "investment_horizon": ["3년", "5년", "10년 이상"][i % 3],
-        "marketing_consent": "동의" if i % 4 else "미동의",
-        "profile_updated": str(TODAY - timedelta(days=30 + i * 19)),
-        "login_days": RNG.randint(2, 23), "digital_interest": ["채권 금리", "연금", "해외 주식", "배당 ETF"][i % 4],
-    })
-write_csv("customers", customers)
-
-products = [
-    {"product_id": "P01", "name": "국내 우량주 바스켓", "category": "주식", "risk_grade": 4},
-    {"product_id": "P02", "name": "글로벌 인덱스 펀드", "category": "펀드", "risk_grade": 3},
-    {"product_id": "P03", "name": "국공채 3년", "category": "채권", "risk_grade": 2},
-    {"product_id": "P04", "name": "우량 회사채", "category": "채권", "risk_grade": 3},
-    {"product_id": "P05", "name": "예수금", "category": "예탁", "risk_grade": 1},
-    {"product_id": "P06", "name": "멀티에셋 인컴 펀드", "category": "펀드", "risk_grade": 3},
-    {"product_id": "P07", "name": "원금 비보장형 ELS", "category": "파생", "risk_grade": 5},
-    {"product_id": "P08", "name": "미국 국채 ETF", "category": "채권", "risk_grade": 3},
-    {"product_id": "P09", "name": "배당 성장 ETF", "category": "주식", "risk_grade": 4},
-    {"product_id": "P10", "name": "단기채 펀드", "category": "펀드", "risk_grade": 2},
+asset_values = [
+    184_221_319, 263_450_000, 124_800_000, 392_100_000, 98_350_000,
+    217_600_000, 143_250_000, 486_700_000, 306_450_000, 112_900_000,
 ]
-write_csv("products", products)
+masked_names = ["김*서", "이*훈", "박*연", "최*민", "정*희", "강*우", "조*은", "윤*석", "장*아", "임*준"]
+branches = ["여의도지점", "강남센터", "판교지점", "광화문센터", "부산지점"]
+managers = ["김미래PB", "이준호PB", "박서연PB", "최민수PB", "정희진PB"]
+employers = ["SK하이닉스", "삼성전자", "현대자동차", "네이버", "LG에너지솔루션"]
+for index, customer_id in enumerate(CUSTOMER_IDS):
+    customers.append({
+        "고객번호": customer_id,
+        "고객등급": customer_tiers[index],
+        "연령": 52 if index == 0 else 35 + (index * 7) % 29,
+        "성별": "남성" if index % 2 == 0 else "여성",
+        "투자성향": risks[index],
+        "TM동의": "Y" if index % 3 != 1 else "N",
+        "EMAIL동의": "N" if index == 0 else ("Y" if index % 3 == 0 else "N"),
+        "PUSH동의": "Y" if index % 4 != 2 else "N",
+        "관리점": branches[index % len(branches)],
+        "PB": managers[index % len(managers)],
+        "가입일": "2022-11-02" if index == 0 else f"{2020 + index % 5}-{(index * 2 % 12) + 1:02d}-{(index * 3 % 27) + 1:02d}",
+        "주거래상품": "국내주식" if index == 0 else ASSET_CLASSES[index % len(ASSET_CLASSES)],
+        "주거래상품비중": 0.60 if index == 0 else round(0.35 + (index % 5) * 0.07, 2),
+        "직장정보": "SK하이닉스" if index == 0 else employers[index % len(employers)],
+        "만기일": "2027-01-23" if index == 0 else f"2027-{(index % 12) + 1:02d}-{(index * 2 % 27) + 1:02d}",
+    })
+write_csv("고객", customers)
 
-accounts, holdings = [], []
-for i, customer in enumerate(customers):
-    total = customer["aum"]
-    for j, account_type in enumerate(["종합매매", "연금저축", "CMA"]):
-        amount = int(total * [0.58, 0.27, 0.15][j])
-        accounts.append({"account_id": f"A{i+1:02d}{j+1}", "customer_id": customer["customer_id"], "type": account_type, "balance": amount, "eval_amount": amount})
-    for j in range(4):
-        amount = int(total * RNG.uniform(0.08, 0.34))
-        maturity = TODAY + timedelta(days=RNG.randint(5, 900)) if j == 0 else ""
-        holdings.append({
-            "holding_id": f"H{i+1:02d}{j+1}", "customer_id": customer["customer_id"],
-            "product_id": products[(i + j) % len(products)]["product_id"], "amount": amount,
-            "pnl": int(amount * RNG.uniform(-0.08, 0.13)), "maturity_date": str(maturity),
+
+balance_trend = []
+for index, (customer_id, current_value) in enumerate(zip(CUSTOMER_IDS, asset_values)):
+    previous_value = round(current_value / 1.062) if index == 0 else round(current_value / (1 + 0.015 * (index % 4 + 1)))
+    start_value = current_value * (0.66 + (index % 4) * 0.025)
+    for month_index, month in enumerate(MONTHS_36):
+        if month_index == 35:
+            amount = current_value
+        elif month_index == 34:
+            amount = previous_value
+        else:
+            progress = month_index / 34
+            seasonality = math.sin(month_index * 0.72 + index) * current_value * 0.008
+            amount = round(start_value + (previous_value - start_value) * progress + seasonality)
+        balance_trend.append({"고객번호": customer_id, "기준월": month, "자산": amount})
+write_csv("잔고추이", balance_trend)
+
+
+asset_allocations = []
+holdings = []
+for customer_index, (customer_id, total) in enumerate(zip(CUSTOMER_IDS, asset_values)):
+    if customer_index == 0:
+        weights = [0.50, 0.18, 0.12, 0.08, 0.09, 0.03]
+    else:
+        raw = [RNG.uniform(0.04, 0.32) for _ in ASSET_CLASSES]
+        weight_total = sum(raw)
+        weights = [value / weight_total for value in raw]
+    amounts = [round(total * weight) for weight in weights]
+    amounts[-1] += total - sum(amounts)
+    for asset_class, weight in zip(ASSET_CLASSES, weights):
+        asset_allocations.append({
+            "고객번호": customer_id,
+            "자산구분": asset_class,
+            "비중": round(weight, 4),
         })
-write_csv("accounts", accounts)
-write_csv("holdings", holdings)
+    for asset_index, (asset_class, category_amount) in enumerate(zip(ASSET_CLASSES, amounts)):
+        product_count = 1 if category_amount < 1_000_000 else (2 if asset_index < 2 else 1)
+        splits = [category_amount // product_count] * product_count
+        splits[-1] += category_amount - sum(splits)
+        for split_index, evaluation in enumerate(splits):
+            product_list = PRODUCT_NAMES[asset_class]
+            product_name = product_list[(customer_index + asset_index + split_index) % len(product_list)]
+            profit_rate = RNG.uniform(-0.06, 0.16)
+            if customer_index == 0 and asset_class == "국내주식" and split_index == 0:
+                product_name = "삼성전자"
+                profit_rate = 0.20
+            purchase = round(evaluation / (1 + profit_rate)) if evaluation else 0
+            holdings.append({
+                "고객번호": customer_id,
+                "잔고순위": 0,
+                "상품명": product_name,
+                "자산군": asset_class,
+                "매입금액": purchase,
+                "평가금액": evaluation,
+                "수익률": (evaluation - purchase) / purchase if purchase else 0,
+            })
+write_csv("자산비중", asset_allocations)
+for customer_id in CUSTOMER_IDS:
+    customer_holdings = sorted(
+        [row for row in holdings if row["고객번호"] == customer_id],
+        key=lambda row: row["평가금액"],
+        reverse=True,
+    )
+    for rank, holding in enumerate(customer_holdings, start=1):
+        holding["잔고순위"] = rank
+write_csv("보유상품", holdings)
+
 
 transactions = []
-channels = ["MTS", "HTS", "영업점", "모바일"]
-for i in range(600):
-    customer = customers[i % 10]
-    tx_date = TODAY - timedelta(days=RNG.randint(0, 365))
-    transactions.append({
-        "tx_id": f"T{i+1:05d}", "customer_id": customer["customer_id"], "date": str(tx_date),
-        "type": RNG.choice(["매수", "매도", "입금", "출금"]), "amount": RNG.randint(100_000, 20_000_000),
-        "channel": RNG.choice(channels),
-    })
-write_csv("transactions", transactions)
+for customer_index, customer_id in enumerate(CUSTOMER_IDS):
+    for month_index, month in enumerate(MONTHS_12):
+        for class_index, asset_class in enumerate(TRADE_ASSET_CLASSES):
+            amount = RNG.randint(1_000_000, 17_000_000)
+            amount = round(amount * (1 + month_index * 0.025) * (1 + class_index * 0.12))
+            transactions.append({
+                "고객번호": customer_id,
+                "자산군": asset_class,
+                "기준월": month,
+                "거래금액": amount,
+            })
+write_csv("거래금액", transactions)
 
-consultations = []
-topics = ["자산배분", "연금 상담", "만기 안내", "시장 변동 문의", "수수료 문의", "계좌 관리"]
-for i in range(120):
-    customer = customers[i % 10]
-    consultations.append({
-        "consult_id": f"CS{i+1:04d}", "customer_id": customer["customer_id"],
-        "date": str(TODAY - timedelta(days=RNG.randint(0, 240))),
-        "channel": RNG.choice(["챗봇", "콜센터", "지점"]), "topic_code": RNG.choice(topics),
-        "resolved": RNG.choice([True, True, True, False]), "csat": RNG.randint(2, 5),
-        "summary_masked": RNG.choice(["분산 투자 방향 문의 및 후속 자료 전달 예정.", "연금 계좌 운용 현황 확인 요청.", "시장 변동에 따른 보유자산 설명 진행.", "만기 일정과 현금흐름 계획 상담."]),
-    })
-write_csv("consultations", consultations)
 
-chatbot_logs = [
-    {
-        "log_id": f"CB{i+1:04d}", "customer_id": customers[i % 10]["customer_id"],
-        "date": str(TODAY - timedelta(days=RNG.randint(0, 120))),
-        "intent_code": RNG.choice(["상품정보", "잔고조회", "연금", "시장정보"]),
-        "escalated": RNG.choice([True, False, False]),
-    }
-    for i in range(200)
-]
-write_csv("chatbot_logs", chatbot_logs)
+investment_returns = []
+for customer_index, customer_id in enumerate(CUSTOMER_IDS):
+    returns = [RNG.uniform(-0.035, 0.085) for _ in MONTHS_12]
+    returns[-1] = 0.062 if customer_index == 0 else round(RNG.uniform(-0.02, 0.11), 3)
+    returns[-2] = 0.038 if customer_index == 0 else round(returns[-1] - RNG.uniform(-0.025, 0.025), 3)
+    for month, value in zip(MONTHS_12, returns):
+        investment_returns.append({
+            "고객번호": customer_id,
+            "기준월": month,
+            "투자수익률(1년)": round(value, 3),
+        })
+write_csv("투자수익률", investment_returns)
 
-market_series = []
-for index_code, start, drift in [("KOSPI", 2600, 1.2), ("S&P500", 5200, 2.3), ("국고채3년", 3.2, -0.001)]:
-    close = start
-    for day in range(500):
-        close = max(0.1, close + RNG.gauss(drift, 13 if index_code != "국고채3년" else 0.025))
-        market_series.append({"date": str(TODAY - timedelta(days=499-day)), "index_code": index_code, "close": round(close, 2)})
-write_csv("market_series", market_series)
 
-news = [
-    {"news_id": f"N{i+1:03d}", "date": str(TODAY - timedelta(days=i * 2)), "tag": tag,
-     "sentiment": sentiment, "title_masked": title, "source": "리서치센터"}
-    for i, (tag, sentiment, title) in enumerate([
-        ("금리", "중립", "주요국 금리 경로와 채권 시장 점검"),
-        ("주식", "긍정", "글로벌 기업 실적 전망 업데이트"),
-        ("환율", "주의", "환율 변동성 확대 구간의 리스크 관리"),
-        ("연금", "긍정", "장기 투자 관점의 연금 자산배분"),
-        ("채권", "중립", "우량 채권 수급과 만기 전략"),
-        ("국내시장", "중립", "국내 증시 주간 전략 브리핑"),
+turnover = []
+for customer_index, customer_id in enumerate(CUSTOMER_IDS):
+    turnover.extend([
+        {
+            "고객번호": customer_id,
+            "자산구분": "국내주식",
+            "회전율": 1.12 if customer_index == 0 else round(RNG.uniform(0.4, 2.8), 2),
+        },
+        {
+            "고객번호": customer_id,
+            "자산구분": "해외주식",
+            "회전율": 0.76 if customer_index == 0 else round(RNG.uniform(0.3, 2.4), 2),
+        },
     ])
+write_csv("회전율", turnover)
+
+
+login_counts = []
+for customer_index, customer_id in enumerate(CUSTOMER_IDS):
+    for month_index, month in enumerate(MONTHS_12):
+        days = 23 if customer_index == 0 and month_index == 11 else RNG.randint(4, 23)
+        login_counts.append({"고객번호": customer_id, "기준월": month, "접속일수": days})
+write_csv("앱접속일수", login_counts)
+
+
+menu_names = ["잔고조회", "국내주식", "해외주식", "이체", "수익률", "관심종목", "연금", "ETF", "거래내역", "상품검색"]
+app_menus = [
+    {"고객번호": customer_id, "순위": rank, "메뉴명": menu}
+    for customer_index, customer_id in enumerate(CUSTOMER_IDS)
+    for rank, menu in enumerate(
+        menu_names[customer_index % len(menu_names):] + menu_names[:customer_index % len(menu_names)],
+        start=1,
+    )
 ]
-write_csv("news", news)
+write_csv("앱메뉴TOP", app_menus)
 
-house_view = []
-for i, (asset, outlook, headline) in enumerate([
-    ("주식", "중립", "실적과 변동성 균형 확인"),
-    ("채권", "과중", "우량 채권의 분산 효과 주목"),
-    ("펀드", "중립", "비용과 기초자산 구성 점검"),
-    ("예탁", "과소", "투자 대기자금 비중 관리"),
-    ("파생", "과소", "위험 성향과 손실 가능성 우선 확인"),
-]):
-    house_view.append({"report_id": f"HV{i+1:02d}", "date": str(TODAY - timedelta(days=i * 3)), "asset_class": asset, "outlook": outlook, "headline": headline, "report_name": "주간 자산배분 전략"})
-write_csv("house_view", house_view)
 
-allocation = []
-for segment in ["프리미어", "골드", "실버"]:
-    weights = {"프리미어": [35, 30, 20, 10, 5], "골드": [30, 30, 22, 13, 5], "실버": [22, 28, 25, 20, 5]}[segment]
-    for asset, weight in zip(["주식", "채권", "펀드", "예탁", "파생"], weights):
-        allocation.append({"segment": segment, "asset_class": asset, "target_pct": weight})
-write_csv("allocation_strategy", allocation)
-
-nba_catalog = [
-    {"nba_id": "NBA01", "trigger_type": "maturity", "trigger_cond": "만기 30일 이내", "action": "만기 자금 운용 계획 확인", "template": "만기상담"},
-    {"nba_id": "NBA02", "trigger_type": "churn", "trigger_cond": "이탈 위험 55점 이상", "action": "선제적 관계 케어", "template": "케어콜"},
-    {"nba_id": "NBA03", "trigger_type": "allocation", "trigger_cond": "목표 비중 점검 필요", "action": "자산배분 리뷰", "template": "포트폴리오리뷰"},
-    {"nba_id": "NBA04", "trigger_type": "profile", "trigger_cond": "프로파일 최신화 필요", "action": "투자정보 최신화", "template": "정보확인"},
-    {"nba_id": "NBA05", "trigger_type": "digital", "trigger_cond": "관심 시그널 감지", "action": "관심 주제 자료 안내", "template": "관심자료"},
-    {"nba_id": "NBA06", "trigger_type": "market", "trigger_cond": "하우스뷰 변경", "action": "시장 영향도 상담", "template": "시장브리핑"},
+search_words = ["삼성전자", "미국 ETF", "배당주", "연금저축", "국고채"]
+search_terms = [
+    {"고객번호": customer_id, "순위": rank, "검색어": word}
+    for customer_index, customer_id in enumerate(CUSTOMER_IDS)
+    for rank, word in enumerate(
+        search_words[customer_index % len(search_words):] + search_words[:customer_index % len(search_words)],
+        start=1,
+    )
 ]
-write_csv("nba_catalog", nba_catalog)
+write_csv("검색어", search_terms)
 
-nba_history = [
-    {"nba_run_id": f"NH{i+1:03d}", "customer_id": customers[i % 10]["customer_id"],
-     "nba_id": nba_catalog[i % len(nba_catalog)]["nba_id"],
-     "date": str(TODAY - timedelta(days=RNG.randint(0, 180))),
-     "status": RNG.choice(["제안", "약정", "보류", "거절"])}
-    for i in range(40)
+
+chatbot_texts = [
+    "잔고 조회는 어떻게 하나요?",
+    "해외주식 거래 가능 시간을 알려주세요.",
+    "연금 계좌의 세액공제 한도가 궁금합니다.",
+    "ETF 매수 수수료를 확인하고 싶어요.",
+    "만기 예정 상품의 재투자 방법을 알려주세요.",
 ]
-write_csv("nba_history", nba_history)
+write_csv("챗봇상담", [
+    {"고객번호": customer_id, "챗봇상담내역": chatbot_texts[index % len(chatbot_texts)]}
+    for index, customer_id in enumerate(CUSTOMER_IDS)
+])
+call_center_texts = [
+    "연금 계좌에서 ETF 매수는 어떻게 하나요?",
+    "해외주식 배당금 입금 일정을 문의하셨습니다.",
+    "계좌 이체 한도 변경 절차를 안내했습니다.",
+    "만기 상품 재투자 상담을 요청하셨습니다.",
+    "거래내역 확인 방법을 안내했습니다.",
+]
+write_csv("고객센터상담", [
+    {"고객번호": customer_id, "고객센터상담내역": call_center_texts[index % len(call_center_texts)]}
+    for index, customer_id in enumerate(CUSTOMER_IDS)
+])
+
+
+base_scores = {
+    "국내주식": 89, "해외주식": 76, "ETF": 84, "IRP": 67, "ISA": 73,
+    "DC": 65, "ELS": 54, "랩어카운트": 55, "개인연금": 71,
+    "개인투자용국채": 64, "채권": 78, "로보어드바이저": 48, "펀드": 62,
+    "순입금": 59, "순출금": 24, "이탈": 28,
+}
+predictions = []
+for customer_index, customer_id in enumerate(CUSTOMER_IDS):
+    for topic in PREDICTION_TOPICS:
+        score = base_scores[topic] if customer_index == 0 else max(
+            10, min(98, base_scores[topic] + RNG.randint(-22, 18))
+        )
+        if topic == "이탈":
+            score = [28, 72, 61, 24, 48, 83, 65, 32, 57, 76][customer_index]
+        if score >= 85:
+            interpretation = "관심매우높음"
+        elif score >= 70:
+            interpretation = "관심높음"
+        elif score >= 50:
+            interpretation = "관심보통"
+        else:
+            interpretation = "관심낮음"
+        if topic == "이탈" and customer_index == 0:
+            interpretation = "매우 낮음"
+        predictions.append({
+            "고객번호": customer_id,
+            "예측주제": topic,
+            "예측점수": f"{score}점",
+            "예측해석": interpretation,
+        })
+write_csv("예측", predictions)
+
+
+nba = []
+for customer_index, (customer_id, total) in enumerate(zip(CUSTOMER_IDS, asset_values)):
+    proposals = [
+        (
+            "포트폴리오 점검",
+            "자산배분 및 목표 비중 점검",
+            f"총 보유 평가액 {total:,.0f}원 기준으로 분산과 목표 비중을 확인합니다.",
+        ),
+        (
+            "투자수익률 확인",
+            "최근 수익률 및 보유 상품 점검",
+            f"총 보유 평가액 {total:,.0f}원과 최근 성과를 바탕으로 보유 상품을 함께 확인합니다.",
+        ),
+        (
+            "관심 상품 안내",
+            "고객 관심 자산군 정보 제공",
+            f"{customers[customer_index]['주거래상품']} 중심의 상품 정보와 관련 투자 유의사항을 안내합니다.",
+        ),
+    ]
+    nba.extend(
+        {
+            "고객번호": customer_id,
+            "제안순서": order,
+            "NextBestAction": " / ".join(proposal),
+        }
+        for order, proposal in enumerate(proposals, start=1)
+    )
+write_csv("NBA", nba)
 
 print(f"Wrote {len(list(OUT.glob('*.csv')))} synthetic CSV datasets to {OUT}")
