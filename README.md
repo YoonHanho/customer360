@@ -22,10 +22,27 @@ python export_html.py
 
 프로젝트 폴더에 `customer360_offline.html`이 생성됩니다. 다른 경로를 지정하려면 `python export_html.py --output "D:\전달\customer360.html"`을 사용합니다. HTML에는 스타일, 로고, Plotly 실행 코드가 포함되어 있어 네트워크나 Dash 서버 없이 브라우저에서 열 수 있습니다. 고객 선택, 5개 탭, 거래 자산군 선택도 HTML 내부에서 동작합니다. 생성기에서 다시 만들 경우 `data/`, `assets/`, `pages/`, `harness/` 폴더와 `export_html.py`를 함께 반입하세요. 기존 `app.py`는 변경하지 않았습니다.
 
+## 실제 고객데이터로 오프라인 HTML 생성
+
+실제 고객데이터 파일 14개를 `data_real/`에 `data/`와 같은 파일명·컬럼 구조로 저장한 뒤 아래 명령을 실행합니다.
+
+```powershell
+python export_real_html.py
+```
+
+기본으로 `data_real/`의 CSV를 읽어 `customer360_real_offline.html`을 생성합니다. 경로를 지정하려면 다음처럼 실행할 수 있습니다.
+
+```powershell
+python export_real_html.py --data-dir "D:\전달\data_real" --output "D:\전달\customer360_real_offline.html"
+```
+
+생성기는 CSV의 필수 파일·컬럼, 고객번호 참조, 고객번호 중복 및 고객별 NBA 제안 순서를 확인하고 문제가 있으면 HTML 생성을 중단합니다. 이 작업에 별도 라이브러리는 필요하지 않으며 기존 `export_html.py`와 기존 `data/` 데이터는 변경하지 않습니다. 실제 CSV와 생성된 실제 고객 HTML은 민감정보 보호를 위해 Git에서 제외됩니다. 반입·보관·열람은 증권사 내부 보안 정책에 따라 관리하세요.
+
 ## 구성
 
 - `app.py`: Dash 진입점
 - `export_html.py`: 자체 포함형 오프라인 HTML 생성기
+- `export_real_html.py`: `data_real/` 데이터로 오프라인 HTML 생성
 - `pages/scr002_customer360.py`: 고객·자산·거래·행동·예측 탭 및 고객별 NBA
 - `harness/schema.py`, `harness/data_loader.py`: CSV 계약과 데이터 로딩
 - `scripts/make_mock_data.py`: 재현 가능한 합성 CSV 데이터 생성

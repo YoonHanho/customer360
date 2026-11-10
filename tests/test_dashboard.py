@@ -1,8 +1,14 @@
 import unittest
 from pathlib import Path
+from shutil import copy2
+from tempfile import TemporaryDirectory
+
+import pandas as pd
 
 from export_html import build_html
+from export_real_html import generate_real_html
 from harness.data_loader import REQUIRED_COLUMNS, load_data
+from pages import scr002_customer360 as dashboard
 from pages.scr002_customer360 import (
     PREDICTION_TOPICS,
     app,
@@ -131,6 +137,27 @@ class DashboardDataTests(unittest.TestCase):
             offline_html,
             r"""<(?:script|link)\b[^>]*\b(?:src|href)\s*=\s*["']https?://""",
         )
+
+    def test_real_data_export_uses_data_real_csvs_and_restores_dashboard_data(self):
+        with TemporaryDirectory() as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            real_data_dir = temporary_root / "data_real"
+            real_data_dir.mkdir()
+            for name in REQUIRED_COLUMNS:
+                copy2(ROOT / "data" / f"{name}.csv", real_data_dir / f"{name}.csv")
+
+            customers_path = real_data_dir / "고객.csv"
+            customers = pd.read_csv(customers_path, encoding="utf-8-sig")
+            customers.loc[0, "직장정보"] = "실제데이터-확인"
+            customers.to_csv(customers_path, index=False, encoding="utf-8-sig")
+
+            original_customers = dashboard.CUSTOMERS
+            output_path = temporary_root / "real_dashboard.html"
+            generated_path = generate_real_html(real_data_dir, output_path)
+
+            self.assertEqual(generated_path, output_path.resolve())
+            self.assertIn("실제데이터-확인", generated_path.read_text(encoding="utf-8"))
+            self.assertIs(dashboard.CUSTOMERS, original_customers)
 
 
 if __name__ == "__main__":
