@@ -68,6 +68,13 @@ PREDICTION_TOPICS = [
     "순출금",
     "이탈",
 ]
+PREDICTION_STYLE_BY_INTERPRETATION = {
+    "관심매우높음": "prediction-very-high",
+    "관심높음": "prediction-high",
+    "관심보통": "prediction-neutral",
+    "관심낮음": "prediction-neutral",
+    "매우 낮음": "prediction-neutral",
+}
 
 app = Dash(
     __name__,
@@ -328,7 +335,7 @@ def trade_content(customer_id: str):
                     html.Div(
                         [
                             html.Div(
-                                [html.Small(row["자산구분"]), html.Strong(f"{row['회전율']:.2f}x")],
+                                [html.Small(row["자산구분"]), html.Strong(f"{row['회전율'] * 100:.0f}%")],
                                 className="metric-tile",
                             )
                             for _, row in latest.iterrows()
@@ -418,16 +425,14 @@ def predictions_content(customer_id: str):
                     html.Span(
                         row["예측해석"],
                         className=(
-                            "prediction-interpretation prediction-highlight-label"
-                            if row["예측해석"] == "관심높음"
-                            else "prediction-interpretation"
+                            "prediction-interpretation "
+                            f"{PREDICTION_STYLE_BY_INTERPRETATION[row['예측해석']]}-label"
                         ),
                     ),
                 ],
                 className=(
-                    "prediction-card prediction-highlight"
-                    if row["예측해석"] == "관심높음"
-                    else "prediction-card"
+                    "prediction-card "
+                    f"{PREDICTION_STYLE_BY_INTERPRETATION[row['예측해석']]}"
                 ),
             )
             for _, row in predictions.iterrows()

@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 
+from export_html import build_html
 from harness.data_loader import REQUIRED_COLUMNS, load_data
 from pages.scr002_customer360 import (
     PREDICTION_TOPICS,
@@ -88,22 +89,48 @@ class DashboardDataTests(unittest.TestCase):
         self.assertIn("184,221,319원", nba[1].children[3].children)
         self.assertFalse(any("nba-score" in card.className for card in nba[1:]))
 
-    def test_high_interest_prediction_cards_use_emphasis_styles(self):
+    def test_turnover_is_rendered_as_a_percentage(self):
+        turnover_grid = tab_content("transactions", "12345685").children[2].children[1]
+        rendered_turnover = {
+            tile.children[0].children: tile.children[1].children
+            for tile in turnover_grid.children
+        }
+        self.assertEqual(rendered_turnover, {"국내주식": "187%", "해외주식": "66%"})
+
+    def test_prediction_cards_use_styles_for_each_interpretation(self):
         prediction_cards = tab_content("predictions", "12345678").children
         self.assertEqual(len(prediction_cards), 16)
-        emphasized = [
-            card
-            for card in prediction_cards
-            if card.children[2].children == "관심높음"
-        ]
-        self.assertGreater(len(emphasized), 0)
-        self.assertTrue(all("prediction-highlight" in card.className for card in emphasized))
+        style_by_label = {
+            "관심매우높음": "prediction-very-high",
+            "관심높음": "prediction-high",
+            "관심보통": "prediction-neutral",
+            "관심낮음": "prediction-neutral",
+            "매우 낮음": "prediction-neutral",
+        }
+        for card in prediction_cards:
+            label = card.children[2].children
+            expected_style = style_by_label[label]
+            self.assertIn(expected_style, card.className)
+            self.assertIn(f"{expected_style}-label", card.children[2].className)
 
     def test_supplied_logo_is_served_from_dashboard_assets(self):
         response = app.server.test_client().get("/assets/mirae_asset_logo.png")
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.content_type.startswith("image/png"))
         response.close()
+
+    def test_offline_export_embeds_assets_and_preserves_dashboard_controls(self):
+        offline_html = build_html()
+        self.assertIn('data:image/png;base64,', offline_html)
+        self.assertIn("Plotly.newPlot", offline_html)
+        self.assertIn("Plotly.react", offline_html)
+        self.assertIn(">187%</strong>", offline_html)
+        self.assertEqual(offline_html.count('class="content-grid offline-dashboard"'), 10)
+        self.assertEqual(offline_html.count('id="trade-asset-select-'), 10)
+        self.assertNotRegex(
+            offline_html,
+            r"""<(?:script|link)\b[^>]*\b(?:src|href)\s*=\s*["']https?://""",
+        )
 
 
 if __name__ == "__main__":

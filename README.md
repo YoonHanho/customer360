@@ -12,9 +12,20 @@ python app.py
 
 브라우저에서 `http://127.0.0.1:8050`을 엽니다. 데이터 파일은 `data/` 아래 14개 CSV이며, 앱 시작 시 필수 파일·컬럼과 고객번호 참조를 검증합니다.
 
+## 인터넷 차단 환경용 단일 HTML
+
+인터넷에 연결하지 않고 브라우저에서 열 수 있는 대시보드 파일을 생성합니다. 증권사 내부 PC의 Python 3.12.11 아나콘다 환경에서 프로젝트의 기존 `pandas`, `dash`, `plotly`가 사용 가능해야 하며, 이 기능을 위해 추가 패키지를 설치하지 않습니다.
+
+```powershell
+python export_html.py
+```
+
+프로젝트 폴더에 `customer360_offline.html`이 생성됩니다. 다른 경로를 지정하려면 `python export_html.py --output "D:\전달\customer360.html"`을 사용합니다. HTML에는 스타일, 로고, Plotly 실행 코드가 포함되어 있어 네트워크나 Dash 서버 없이 브라우저에서 열 수 있습니다. 고객 선택, 5개 탭, 거래 자산군 선택도 HTML 내부에서 동작합니다. 생성기에서 다시 만들 경우 `data/`, `assets/`, `pages/`, `harness/` 폴더와 `export_html.py`를 함께 반입하세요. 기존 `app.py`는 변경하지 않았습니다.
+
 ## 구성
 
 - `app.py`: Dash 진입점
+- `export_html.py`: 자체 포함형 오프라인 HTML 생성기
 - `pages/scr002_customer360.py`: 고객·자산·거래·행동·예측 탭 및 고객별 NBA
 - `harness/schema.py`, `harness/data_loader.py`: CSV 계약과 데이터 로딩
 - `scripts/make_mock_data.py`: 재현 가능한 합성 CSV 데이터 생성
