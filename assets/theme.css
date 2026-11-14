@@ -118,3 +118,24 @@ h2 { margin: 0; font-size: 17px; letter-spacing: -.025em; }
   .tabs { overflow-x: auto; }
   .tab { min-width: 58px; padding: 12px 10px; }
 }
+
+/* ── 이탈 예측 전용 색상 ──────────────────────────────────── */
+/* safe : 점수 낙음 → 이탈 위험 낙음 (안전) */
+.prediction-churn-safe { border-color: #27AE60; background: #F0FAF4; box-shadow: inset 0 0 0 1px #A8DFB7; }
+.prediction-churn-safe .prediction-topic,
+.prediction-churn-safe .prediction-score { color: #1A7A42; }
+.prediction-churn-safe .prediction-score { font-weight: 800; }
+.prediction-interpretation.prediction-churn-safe-label { color: #fff; background: #27AE60; }
+
+/* warning : 점수 중간 → 이탈 위험 보통 */
+.prediction-churn-warning { border-color: var(--orange-light); background: #FFF8F1; }
+.prediction-churn-warning .prediction-topic,
+.prediction-churn-warning .prediction-score { color: var(--orange-dark); }
+.prediction-interpretation.prediction-churn-warning-label { color: var(--orange-dark); background: #FCE3CD; }
+
+/* danger : 점수 높음 → 이탈 위험 높음 */
+.prediction-churn-danger { border-color: #C0392B; background: #FFF5F5; box-shadow: inset 0 0 0 1px #E8A09A; }
+.prediction-churn-danger .prediction-topic,
+.prediction-churn-danger .prediction-score { color: #C0392B; }
+.prediction-churn-danger .prediction-score { font-weight: 800; }
+.prediction-interpretation.prediction-churn-danger-label { color: #fff; background: #C0392B; }

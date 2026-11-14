@@ -85,7 +85,7 @@ class DashboardDataTests(unittest.TestCase):
         ]
         self.assertIn(("총자산 AUM", "1.8억", "최근 1개월 +6.2%"), rendered_metrics)
         self.assertIn(("투자성향", "위험중립형", "2027-01-23 만기"), rendered_metrics)
-        self.assertIn(("이탈위험", "28점", "매우 낮음"), rendered_metrics)
+        self.assertIn(("이탈위험", "28점", "이탈위험낮음"), rendered_metrics)
         self.assertIn(("투자수익률(1년)", "+6.2%", "전월 대비 +2.4%p"), rendered_metrics)
         self.assertIn(("주거래상품", "국내주식", "잔고비중 50%"), rendered_metrics)
         nba = update_nba_panel("12345678")
@@ -113,11 +113,20 @@ class DashboardDataTests(unittest.TestCase):
             "관심낮음": "prediction-neutral",
             "매우 낮음": "prediction-neutral",
         }
+        churn_style_by_label = {
+            "이탈위험낮음": "prediction-churn-safe",
+            "이탈위험보통": "prediction-churn-warning",
+            "이탈위험높음": "prediction-churn-danger",
+        }
         for card in prediction_cards:
             label = card.children[2].children
-            expected_style = style_by_label[label]
+            if label in churn_style_by_label:
+                expected_style = churn_style_by_label[label]
+            else:
+                expected_style = style_by_label[label]
             self.assertIn(expected_style, card.className)
             self.assertIn(f"{expected_style}-label", card.children[2].className)
+
 
     def test_supplied_logo_is_served_from_dashboard_assets(self):
         response = app.server.test_client().get("/assets/mirae_asset_logo.png")

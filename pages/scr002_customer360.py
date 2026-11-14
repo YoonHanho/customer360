@@ -91,6 +91,17 @@ def money(value: float) -> str:
     return f"{value / 10_000:,.0f}만원"
 
 
+def churn_label_and_style(score_str: str) -> tuple[str, str]:
+    """이탈 예측 점수를 (표시 문구, CSS 클래스) 로 변환한다.
+    점수가 낮을수록 이탈 위험이 낮음(안전)을 의미한다."""
+    score = int(str(score_str).replace("점", ""))
+    if score >= 70:
+        return "이탈위험높음", "prediction-churn-danger"
+    if score >= 50:
+        return "이탈위험보통", "prediction-churn-warning"
+    return "이탈위험낮음", "prediction-churn-safe"
+
+
 def selected_customer(customer_id: str) -> pd.Series:
     matched = CUSTOMERS.loc[CUSTOMERS["고객번호"] == customer_id]
     if matched.empty:
@@ -416,29 +427,35 @@ def predictions_content(customer_id: str):
         {topic: index for index, topic in enumerate(PREDICTION_TOPICS)}
     )
     predictions = predictions.sort_values("정렬순서")
-    return html.Div(
-        [
-            html.Div(
+    cards = []
+    for _, row in predictions.iterrows():
+        if row["예측주제"] == "이탈":
+            label, style = churn_label_and_style(row["예측점수"])
+            card = html.Div(
+                [
+                    html.Span(row["예측주제"], className="prediction-topic"),
+                    html.Strong(row["예측점수"], className="prediction-score"),
+                    html.Span(label, className=f"prediction-interpretation {style}-label"),
+                ],
+                className=f"prediction-card {style}",
+            )
+        else:
+            card_style = PREDICTION_STYLE_BY_INTERPRETATION.get(
+                row["예측해석"], "prediction-neutral"
+            )
+            card = html.Div(
                 [
                     html.Span(row["예측주제"], className="prediction-topic"),
                     html.Strong(row["예측점수"], className="prediction-score"),
                     html.Span(
                         row["예측해석"],
-                        className=(
-                            "prediction-interpretation "
-                            f"{PREDICTION_STYLE_BY_INTERPRETATION[row['예측해석']]}-label"
-                        ),
+                        className=f"prediction-interpretation {card_style}-label",
                     ),
                 ],
-                className=(
-                    "prediction-card "
-                    f"{PREDICTION_STYLE_BY_INTERPRETATION[row['예측해석']]}"
-                ),
+                className=f"prediction-card {card_style}",
             )
-            for _, row in predictions.iterrows()
-        ],
-        className="prediction-grid",
-    )
+        cards.append(card)
+    return html.Div(cards, className="prediction-grid")
 
 
 def tab_content(tab: str, customer_id: str):
@@ -574,6 +591,7 @@ def update_customer_summary(customer_id: str):
 
     churn = customer_rows(PREDICTIONS, customer_id)
     churn = churn.loc[churn["예측주제"] == "이탈"].iloc[0]
+    churn_label, _ = churn_label_and_style(churn["예측점수"])
     allocation = customer_rows(ASSET_ALLOCATION, customer_id)
     main_product_share = allocation.loc[
         allocation["자산구분"] == customer["주거래상품"], "비중"
@@ -582,7 +600,7 @@ def update_customer_summary(customer_id: str):
     metrics = [
         ("총자산 AUM", money(float(latest_balance["자산"])), f"최근 1개월 {monthly_change:+.1f}%"),
         ("투자성향", customer["투자성향"], f"{customer['만기일']} 만기"),
-        ("이탈위험", churn["예측점수"], churn["예측해석"]),
+        ("이탈위험", churn["예측점수"], churn_label),
         ("투자수익률(1년)", f"{current_return:+.1f}%", f"전월 대비 {return_delta:+.1f}%p"),
         ("주거래상품", customer["주거래상품"], f"잔고비중 {main_product_share * 100:.0f}%"),
     ]
