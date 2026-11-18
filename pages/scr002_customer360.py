@@ -600,9 +600,9 @@ def update_customer_summary(customer_id: str):
     metrics = [
         ("총자산 AUM", money(float(latest_balance["자산"])), f"최근 1개월 {monthly_change:+.1f}%"),
         ("투자성향", customer["투자성향"], f"{customer['만기일']} 만기"),
-        ("이탈위험", churn["예측점수"], churn_label),
-        ("투자수익률(1년)", f"{current_return:+.1f}%", f"전월 대비 {return_delta:+.1f}%p"),
         ("주거래상품", customer["주거래상품"], f"잔고비중 {main_product_share * 100:.0f}%"),
+        ("투자수익률(1년)", f"{current_return:+.1f}%", f"전월 대비 {return_delta:+.1f}%p"),
+        ("이탈위험", churn["예측점수"], churn_label),
     ]
     return [
         html.Div(
@@ -634,7 +634,7 @@ def update_transaction_figure(asset_class: str, customer_id: str):
 @callback(Output("nba-panel", "children"), Input("customer-select", "value"))
 def update_nba_panel(customer_id: str):
     actions = customer_rows(NBA, customer_id).sort_values("제안순서")
-    cards = []
+    tabs = []
     for _, row in actions.iterrows():
         parts = str(row["NextBestAction"]).split(" / ", maxsplit=2)
         if len(parts) != 3:
@@ -642,15 +642,22 @@ def update_nba_panel(customer_id: str):
                 f"NBA proposal {row['제안순서']} for customer {customer_id} "
                 "must have topic, content, and detail"
             )
-        cards.append(
-            html.Div(
-                [
-                    html.Span(f"{int(row['제안순서']):02d}", className="nba-order"),
-                    html.Strong(parts[0], className="nba-topic"),
-                    html.Strong(parts[1], className="nba-title"),
-                    html.P(parts[2], className="nba-explanation"),
-                ],
-                className="nba-recommendation",
+        recommendation = html.Div(
+            [
+                html.Strong(parts[0], className="nba-topic"),
+                html.Strong(parts[1], className="nba-title"),
+                html.P(parts[2], className="nba-explanation"),
+            ],
+            className="nba-recommendation",
+        )
+        order = int(row["제안순서"])
+        tabs.append(
+            dcc.Tab(
+                label=f"제안 {order:02d}",
+                value=order,
+                children=recommendation,
+                className="tab",
+                selected_className="tab-selected",
             )
         )
     return [
@@ -660,7 +667,12 @@ def update_nba_panel(customer_id: str):
             ],
             className="section-title-row",
         ),
-        *cards,
+        dcc.Tabs(
+            id="nba-proposal-tabs",
+            value=int(actions.iloc[0]["제안순서"]),
+            children=tabs,
+            className="tabs nba-tabs",
+        ),
     ]
 
 

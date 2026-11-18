@@ -4,6 +4,7 @@ from shutil import copy2
 from tempfile import TemporaryDirectory
 
 import pandas as pd
+from dash import dcc
 
 from export_html import build_html
 from export_real_html import generate_real_html
@@ -83,17 +84,26 @@ class DashboardDataTests(unittest.TestCase):
             (metric.children[0].children, metric.children[1].children, metric.children[2].children)
             for metric in metrics
         ]
+        self.assertEqual(
+            [metric[0] for metric in rendered_metrics],
+            ["총자산 AUM", "투자성향", "주거래상품", "투자수익률(1년)", "이탈위험"],
+        )
         self.assertIn(("총자산 AUM", "1.8억", "최근 1개월 +6.2%"), rendered_metrics)
         self.assertIn(("투자성향", "위험중립형", "2027-01-23 만기"), rendered_metrics)
         self.assertIn(("이탈위험", "28점", "이탈위험낮음"), rendered_metrics)
         self.assertIn(("투자수익률(1년)", "+6.2%", "전월 대비 +2.4%p"), rendered_metrics)
         self.assertIn(("주거래상품", "국내주식", "잔고비중 50%"), rendered_metrics)
         nba = update_nba_panel("12345678")
-        self.assertEqual(len(nba) - 1, 3)
-        self.assertEqual(nba[1].children[1].children, "포트폴리오 점검")
-        self.assertEqual(nba[1].children[2].children, "자산배분 및 목표 비중 점검")
-        self.assertIn("184,221,319원", nba[1].children[3].children)
-        self.assertFalse(any("nba-score" in card.className for card in nba[1:]))
+        self.assertEqual(len(nba), 2)
+        nba_tabs = nba[1]
+        self.assertIsInstance(nba_tabs, dcc.Tabs)
+        self.assertEqual([tab.label for tab in nba_tabs.children], ["제안 01", "제안 02", "제안 03"])
+        self.assertEqual(nba_tabs.value, 1)
+        first_proposal = nba_tabs.children[0].children
+        self.assertEqual(first_proposal.children[0].children, "포트폴리오 점검")
+        self.assertEqual(first_proposal.children[1].children, "자산배분 및 목표 비중 점검")
+        self.assertIn("184,221,319원", first_proposal.children[2].children)
+        self.assertFalse(any("nba-score" in tab.children.className for tab in nba_tabs.children))
 
     def test_turnover_is_rendered_as_a_percentage(self):
         turnover_grid = tab_content("transactions", "12345685").children[2].children[1]
@@ -140,6 +150,13 @@ class DashboardDataTests(unittest.TestCase):
         self.assertIn("Plotly.newPlot", offline_html)
         self.assertIn("Plotly.react", offline_html)
         self.assertIn(">187%</strong>", offline_html)
+        self.assertEqual(offline_html.count('data-nba-tab-target="1"'), 10)
+        self.assertEqual(offline_html.count('data-nba-tab-target="2"'), 10)
+        self.assertEqual(offline_html.count('data-nba-tab-target="3"'), 10)
+        self.assertEqual(offline_html.count('data-nba-tab-panel='), 30)
+        summary_labels = ["총자산 AUM", "투자성향", "주거래상품", "투자수익률(1년)", "이탈위험"]
+        summary_positions = [offline_html.index(label) for label in summary_labels]
+        self.assertEqual(summary_positions, sorted(summary_positions))
         self.assertEqual(offline_html.count('class="content-grid offline-dashboard"'), 10)
         self.assertEqual(offline_html.count('id="trade-asset-select-'), 10)
         self.assertNotRegex(
@@ -165,7 +182,11 @@ class DashboardDataTests(unittest.TestCase):
             generated_path = generate_real_html(real_data_dir, output_path)
 
             self.assertEqual(generated_path, output_path.resolve())
-            self.assertIn("실제데이터-확인", generated_path.read_text(encoding="utf-8"))
+            real_html = generated_path.read_text(encoding="utf-8")
+            self.assertIn("실제데이터-확인", real_html)
+            self.assertEqual(real_html.count('data-nba-tab-target="1"'), 10)
+            self.assertEqual(real_html.count('data-nba-tab-target="2"'), 10)
+            self.assertEqual(real_html.count('data-nba-tab-target="3"'), 10)
             self.assertIs(dashboard.CUSTOMERS, original_customers)
 
 

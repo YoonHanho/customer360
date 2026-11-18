@@ -249,6 +249,8 @@ def build_html() -> str:
 
     for _, customer in CUSTOMERS.iterrows():
         customer_id = str(customer["고객번호"])
+        nba_panel = update_nba_panel(customer_id)
+        nba_tabs = nba_panel[1].children
         summaries.append(
             dash_html.Div(
                 update_customer_summary(customer_id),
@@ -276,6 +278,29 @@ def build_html() -> str:
             )
             for index, (_, value) in enumerate(tab_specs)
         ]
+        nba_tab_buttons = [
+            dash_html.Button(
+                tab.label,
+                type="button",
+                className="tab tab-selected" if index == 0 else "tab",
+                **{
+                    "data-nba-tab-target": tab.value,
+                    "aria-selected": str(index == 0).lower(),
+                },
+            )
+            for index, tab in enumerate(nba_tabs)
+        ]
+        nba_tab_panels = [
+            dash_html.Div(
+                tab.children,
+                className="nba-tab-panel",
+                **{
+                    "data-nba-tab-panel": tab.value,
+                    "hidden": index != 0,
+                },
+            )
+            for index, tab in enumerate(nba_tabs)
+        ]
         dashboards.append(
             dash_html.Div(
                 [
@@ -288,7 +313,11 @@ def build_html() -> str:
                         className="card insights-card",
                     ),
                     dash_html.Aside(
-                        update_nba_panel(customer_id),
+                        [
+                            nba_panel[0],
+                            dash_html.Div(nba_tab_buttons, className="tabs nba-tabs"),
+                            dash_html.Div(nba_tab_panels, className="nba-tab-panels"),
+                        ],
                         className="card nba-panel",
                     ),
                 ],
@@ -338,6 +367,10 @@ select.offline-select {
 }
 .offline-tabs { display: flex; flex-wrap: wrap; }
 .offline-tabs button { cursor: pointer; background: transparent; }
+.nba-tabs { display: flex; margin-top: 12px; }
+.nba-tabs button { flex: 1 1 0; cursor: pointer; background: transparent; }
+.nba-tab-panels { padding-top: 12px; }
+.nba-tab-panel .nba-recommendation { margin-top: 0; }
 .summary-view { display: contents; }
 .offline-chart { width: 100%; min-height: 280px; }
 .offline-table-wrap { width: 100%; overflow-x: auto; }
@@ -391,6 +424,17 @@ function setActiveTab(dashboard, tabValue) {{
   resizeVisibleCharts(dashboard);
 }}
 
+function setActiveNbaTab(panel, tabValue) {{
+  panel.querySelectorAll("[data-nba-tab-panel]").forEach((tabPanel) => {{
+    tabPanel.hidden = tabPanel.dataset.nbaTabPanel !== tabValue;
+  }});
+  panel.querySelectorAll("[data-nba-tab-target]").forEach((button) => {{
+    const selected = button.dataset.nbaTabTarget === tabValue;
+    button.classList.toggle("tab-selected", selected);
+    button.setAttribute("aria-selected", String(selected));
+  }});
+}}
+
 dashboardRoot.addEventListener("change", (event) => {{
   if (event.target.id === "customer-select") {{
     activateCustomer(event.target.value);
@@ -417,6 +461,11 @@ dashboardRoot.addEventListener("change", (event) => {{
 }});
 
 dashboardRoot.addEventListener("click", (event) => {{
+  const nbaButton = event.target.closest("[data-nba-tab-target]");
+  if (nbaButton) {{
+    setActiveNbaTab(nbaButton.closest(".nba-panel"), nbaButton.dataset.nbaTabTarget);
+    return;
+  }}
   const button = event.target.closest("[data-tab-target]");
   if (button) {{
     setActiveTab(button.closest(".offline-dashboard"), button.dataset.tabTarget);
