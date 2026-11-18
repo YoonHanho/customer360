@@ -1,4 +1,8 @@
-"""Export the Dash customer dashboard as a self-contained offline HTML file."""
+"""Dash 고객 360 대시보드를 독립 실행 가능한 단독(오프라인) HTML 파일로 내보내는 스크립트.
+
+서버(Flask/Dash) 없이 웹 브라우저에서 바로 열람할 수 있도록,
+모든 고객 데이터와 Plotly 차트, 탭 전환 스크립트, 스타일시트를 단일 HTML 파일로 패키징합니다.
+"""
 
 from __future__ import annotations
 
@@ -28,7 +32,10 @@ from pages.scr002_customer360 import (
 )
 
 
+# 닫는 태그가 없는 HTML 빈 태그(Void tags) 목록
 VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+
+# Dash 속성명을 표준 HTML 속성명으로 변환하는 매핑
 ATTRIBUTE_NAMES = {
     "className": "class",
     "htmlFor": "for",
@@ -39,6 +46,7 @@ ATTRIBUTE_NAMES = {
 
 
 def _walk(value: Any):
+    """Dash 컴포넌트 트리를 재귀적으로 순회하여 하위 컴포넌트들을 yield하는 제너레이터."""
     if isinstance(value, Component):
         yield value
         yield from _walk(value.to_plotly_json()["props"].get("children"))
@@ -48,6 +56,7 @@ def _walk(value: Any):
 
 
 def _find_by_id(root: Component, component_id: str) -> Component:
+    """컴포넌트 트리에서 지정된 id를 가진 컴포넌트를 검색하여 반환."""
     for component in _walk(root):
         if component.to_plotly_json()["props"].get("id") == component_id:
             return component
@@ -55,6 +64,7 @@ def _find_by_id(root: Component, component_id: str) -> Component:
 
 
 def _find_by_class(root: Component, class_name: str) -> Component:
+    """컴포넌트 트리에서 지정된 클래스명을 가진 컴포넌트를 검색하여 반환."""
     for component in _walk(root):
         classes = component.to_plotly_json()["props"].get("className", "").split()
         if class_name in classes:
@@ -63,6 +73,7 @@ def _find_by_class(root: Component, class_name: str) -> Component:
 
 
 def _style_text(style: dict[str, Any]) -> str:
+    """스타일 딕셔너리(카멜케이스)를 인라인 CSS 스타일 문자열(케밥케이스)로 변환."""
     declarations = []
     for name, value in style.items():
         if value is not None:
@@ -72,17 +83,22 @@ def _style_text(style: dict[str, Any]) -> str:
 
 
 def _json_text(value: Any) -> str:
+    """PlotlyJSONEncoder를 사용하여 데이터를 안전한 JSON 문자열로 직렬화."""
     return json.dumps(value, cls=PlotlyJSONEncoder, ensure_ascii=False).replace("<", "\\u003c")
 
 
 class OfflineRenderer:
+    """Dash 컴포넌트 및 Plotly 차트를 정적 HTML 태그와 오프라인 스크립트용 데이터로 변환하는 렌더러."""
+
     def __init__(self) -> None:
+        """렌더러 초기화 및 그래프 데이터 저장소 준비."""
         self.graphs: dict[str, dict[str, Any]] = {}
         self.transaction_graphs: dict[str, dict[str, dict[str, Any]]] = {}
         self.transaction_graph_id_by_customer: dict[str, str] = {}
         self.graph_number = 0
 
     def render(self, component: Any, customer_id: str | None = None) -> str:
+        """Dash 컴포넌트를 해당하는 HTML 문자열로 재귀 렌더링."""
         if component is None:
             return ""
         if isinstance(component, (list, tuple)):
@@ -113,6 +129,7 @@ class OfflineRenderer:
         return f"<{tag}{attributes}>{children}</{tag}>"
 
     def _render_attributes(self, props: dict[str, Any], tag: str) -> str:
+        """컴포넌트 속성(props)을 HTML 속성 문자열로 변환 (로컬 이미지 base64 인라인 포함)."""
         attributes: list[str] = []
         for name, value in props.items():
             if name in {"children", "key", "loading_state", "dangerouslySetInnerHTML"} or value is None:
@@ -146,6 +163,7 @@ class OfflineRenderer:
         return "".join(attributes)
 
     def _render_dropdown(self, props: dict[str, Any], customer_id: str | None) -> str:
+        """Dash Dropdown 컴포넌트를 정적 HTML <select> 태그로 렌더링."""
         component_id = props.get("id", "")
         element_id = (
             f"{component_id}-{customer_id}"
@@ -174,6 +192,7 @@ class OfflineRenderer:
         )
 
     def _render_graph(self, props: dict[str, Any], customer_id: str | None) -> str:
+        """Plotly Graph 컴포넌트를 오프라인 렌더링용 placeholder <div> 태그로 변환하고 정의 저장."""
         self.graph_number += 1
         graph_id = f"offline-plot-{self.graph_number}"
         component_id = props.get("id", "")
@@ -199,6 +218,7 @@ class OfflineRenderer:
         )
 
     def _render_table(self, props: dict[str, Any]) -> str:
+        """Dash DataTable 컴포넌트를 정적 HTML <table> 태그로 렌더링."""
         columns = props.get("columns", [])
         data = props.get("data", [])
         right_aligned = {
@@ -233,6 +253,7 @@ class OfflineRenderer:
 
 
 def build_html() -> str:
+    """모든 고객 데이터와 차트, 인터랙티브 동작 스크립트가 포함된 완전한 독립형 HTML 문자열을 생성."""
     layout = app.layout
     if not isinstance(layout, Component):
         raise TypeError("The dashboard layout must be a Dash component.")
@@ -500,6 +521,7 @@ activateCustomer(document.getElementById("customer-select").value);
 
 
 def export_html(output_path: Path) -> Path:
+    """오프라인 대시보드 HTML을 생성하여 지정된 경로에 파일로 저장."""
     output_path = output_path.expanduser().resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(build_html(), encoding="utf-8")
@@ -507,6 +529,7 @@ def export_html(output_path: Path) -> Path:
 
 
 def main() -> None:
+    """CLI 인자(--output)를 처리하여 독립형 오프라인 대시보드 HTML 파일을 생성하는 메인 함수."""
     parser = argparse.ArgumentParser(description="Create a self-contained offline dashboard HTML file.")
     parser.add_argument(
         "--output",

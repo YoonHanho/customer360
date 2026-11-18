@@ -1,4 +1,8 @@
-"""Synthetic customer-360° wealth-management dashboard."""
+"""WM(Wealth Management) 고객 360° 대시보드 메인 애플리케이션 모듈.
+
+고객의 자산 현황, 거래 추이, 앱 내 행동 분석, AI 예측 지표 및 개인화된 제안(Next Best Action)을
+시각화하고 상호작용할 수 있는 Dash 대시보드를 제공합니다.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +15,7 @@ from dash import Dash, Input, Output, callback, dash_table, dcc, html
 from harness.data_loader import load_data
 
 
+# 프로젝트 루트 및 14개 핵심 데이터셋 로드
 ROOT = Path(__file__).resolve().parents[1]
 DATA = load_data(ROOT / "data")
 CUSTOMERS = DATA["고객"]
@@ -28,6 +33,7 @@ CALL_CENTER_CONSULTATIONS = DATA["고객센터상담"]
 PREDICTIONS = DATA["예측"]
 NBA = DATA["NBA"]
 
+# 대시보드 공통 컬러 팔레트
 COLORS = {
     "orange": "#F58220",
     "blue": "#043B72",
@@ -76,6 +82,7 @@ PREDICTION_STYLE_BY_INTERPRETATION = {
     "매우 낮음": "prediction-neutral",
 }
 
+# Dash 앱 및 Flask 서버 인스턴스 초기화
 app = Dash(
     __name__,
     title="고객 360° | WM 인사이트",
@@ -86,6 +93,7 @@ server = app.server
 
 
 def money(value: float) -> str:
+    """숫자 금액을 '억' 또는 '만원' 단위의 가독성 있는 한글 문자열로 변환."""
     if value >= 100_000_000:
         return f"{value / 100_000_000:,.1f}억"
     return f"{value / 10_000:,.0f}만원"
@@ -103,6 +111,7 @@ def churn_label_and_style(score_str: str) -> tuple[str, str]:
 
 
 def selected_customer(customer_id: str) -> pd.Series:
+    """고객번호로 특정 고객의 기본 프로필 정보를 조회."""
     matched = CUSTOMERS.loc[CUSTOMERS["고객번호"] == customer_id]
     if matched.empty:
         raise ValueError(f"Unknown customer number: {customer_id}")
@@ -110,10 +119,12 @@ def selected_customer(customer_id: str) -> pd.Series:
 
 
 def customer_rows(dataset: pd.DataFrame, customer_id: str) -> pd.DataFrame:
+    """지정된 데이터셋에서 특정 고객번호에 해당하는 행들만 필터링하여 복사본으로 반환."""
     return dataset.loc[dataset["고객번호"] == customer_id].copy()
 
 
 def figure_layout(fig, height: int = 280):
+    """Plotly 차트에 일관된 여백, 배경 투명도, 폰트 및 축 스타일을 적용."""
     fig.update_layout(
         height=height,
         margin=dict(l=8, r=8, t=18, b=8),
@@ -128,6 +139,7 @@ def figure_layout(fig, height: int = 280):
 
 
 def balance_figure(customer_id: str):
+    """해당 고객의 최근 3년간 월별 자산 잔고 추이 라인 차트 생성."""
     monthly = customer_rows(BALANCE_TREND, customer_id).sort_values("기준월")
     fig = px.line(
         monthly,
@@ -143,6 +155,7 @@ def balance_figure(customer_id: str):
 
 
 def allocation_figure(customer_id: str):
+    """해당 고객의 자산군별 비중(국내주식, 해외주식, 펀드 등) 도넛 차트 생성."""
     allocation = customer_rows(ASSET_ALLOCATION, customer_id)
     fig = px.pie(
         allocation,
@@ -166,6 +179,7 @@ def allocation_figure(customer_id: str):
 
 
 def transaction_figure(customer_id: str, asset_class: str):
+    """해당 고객의 특정 자산군에 대한 최근 1년간 월별 거래금액 라인 차트 생성."""
     monthly = customer_rows(TRANSACTION_AMOUNTS, customer_id)
     monthly = monthly.loc[monthly["자산군"] == asset_class].sort_values("기준월")
     fig = px.line(
@@ -182,6 +196,7 @@ def transaction_figure(customer_id: str, asset_class: str):
 
 
 def return_figure(customer_id: str):
+    """해당 고객의 최근 1년간 월별 투자수익률 바 차트 생성."""
     monthly = customer_rows(INVESTMENT_RETURNS, customer_id).sort_values("기준월")
     monthly["수익률(%)"] = monthly["투자수익률(1년)"] * 100
     fig = px.bar(
@@ -197,6 +212,7 @@ def return_figure(customer_id: str):
 
 
 def login_figure(customer_id: str):
+    """해당 고객의 최근 1년간 월별 모바일 앱 접속일수 바 차트 생성."""
     monthly = customer_rows(APP_LOGINS, customer_id).sort_values("기준월")
     fig = px.bar(
         monthly,
@@ -211,6 +227,7 @@ def login_figure(customer_id: str):
 
 
 def product_table(customer_id: str):
+    """해당 고객의 보유상품 중 평가금액 상위 5개 상품을 표시하는 Dash DataTable 생성."""
     rows = customer_rows(HOLDINGS, customer_id).sort_values(
         "잔고순위"
     ).head(5).copy()
@@ -249,6 +266,7 @@ def product_table(customer_id: str):
 
 
 def profile_content(customer_id: str):
+    """[고객] 탭: 고객 기본정보, 투자성향, 관리점, 마케팅 동의 등의 프로필 카드 뷰 생성."""
     customer = selected_customer(customer_id)
     marketing = (
         f"TM({customer['TM동의']}), EMAIL({customer['EMAIL동의']}), "
@@ -277,6 +295,7 @@ def profile_content(customer_id: str):
 
 
 def asset_content(customer_id: str):
+    """[자산] 탭: 자산 잔고 추이 차트, 자산 비중 도넛 차트 및 보유상품 TOP 5 테이블 배치."""
     return html.Div(
         [
             html.Div(
@@ -306,6 +325,7 @@ def asset_content(customer_id: str):
 
 
 def trade_content(customer_id: str):
+    """[거래] 탭: 자산군별 거래금액 추이(드롭다운 포함), 1년 투자수익률 추이 및 회전율 지표 배치."""
     latest = customer_rows(TURNOVER, customer_id)
 
     return html.Div(
@@ -362,6 +382,7 @@ def trade_content(customer_id: str):
 
 
 def behavior_content(customer_id: str):
+    """[행동] 탭: 최근 1년 앱 접속일수, 당월 앱 메뉴 이용 순위 TOP 10, 검색어 및 상담내역 배치."""
     menus = customer_rows(APP_MENU_TOP, customer_id).sort_values("순위").head(10)
     searches = customer_rows(SEARCH_TERMS, customer_id).sort_values("순위").head(5)
     chatbot = customer_rows(CHATBOT_CONSULTATIONS, customer_id)
@@ -422,6 +443,7 @@ def behavior_content(customer_id: str):
 
 
 def predictions_content(customer_id: str):
+    """[예측] 탭: 상품/서비스 관심도 예측 점수 및 고객 이탈 위험도 예측 카드를 그리드 형태로 표시."""
     predictions = customer_rows(PREDICTIONS, customer_id).copy()
     predictions["정렬순서"] = predictions["예측주제"].map(
         {topic: index for index, topic in enumerate(PREDICTION_TOPICS)}
@@ -459,6 +481,7 @@ def predictions_content(customer_id: str):
 
 
 def tab_content(tab: str, customer_id: str):
+    """선택된 탭 식별자에 해당하는 서브 화면(컴포넌트)을 반환."""
     if tab == "customer":
         return profile_content(customer_id)
     if tab == "assets":
@@ -472,7 +495,10 @@ def tab_content(tab: str, customer_id: str):
     return html.P("선택한 고객 정보를 찾을 수 없습니다.", className="empty-state")
 
 
+# 초기 로딩 시 기본 선택할 첫 번째 고객번호
 first_customer = str(CUSTOMERS.iloc[0]["고객번호"])
+
+# 대시보드 전체 레이아웃 (헤더, 상단 고객선택/요약정보, 본문 탭/NBA 영역, 푸터)
 app.layout = html.Div(
     [
         html.Header(
@@ -578,6 +604,7 @@ app.layout = html.Div(
 
 @callback(Output("customer-summary", "children"), Input("customer-select", "value"))
 def update_customer_summary(customer_id: str):
+    """고객 선택 드롭다운 변경 시 상단 핵심 스냅샷 지표(총자산 AUM, 투자성향, 주거래상품, 수익률, 이탈위험)를 갱신."""
     customer = selected_customer(customer_id)
     balances = customer_rows(BALANCE_TREND, customer_id).sort_values("기준월")
     latest_balance = balances.iloc[-1]
@@ -619,6 +646,7 @@ def update_customer_summary(customer_id: str):
     Input("customer-select", "value"),
 )
 def update_tab(tab: str, customer_id: str):
+    """탭 선택 또는 고객 선택 변경 시 해당하는 인사이트 탭 패널의 서브 화면을 갱신."""
     return tab_content(tab, customer_id)
 
 
@@ -628,11 +656,13 @@ def update_tab(tab: str, customer_id: str):
     Input("customer-select", "value"),
 )
 def update_transaction_figure(asset_class: str, customer_id: str):
+    """[거래] 탭 내 자산군 드롭다운 변경 시 월간 거래 금액 차트를 갱신."""
     return transaction_figure(customer_id, asset_class)
 
 
 @callback(Output("nba-panel", "children"), Input("customer-select", "value"))
 def update_nba_panel(customer_id: str):
+    """고객 선택 변경 시 해당 고객에 맞는 Next Best Action(제안 순서별 탭 및 추천 상세)을 갱신."""
     actions = customer_rows(NBA, customer_id).sort_values("제안순서")
     tabs = []
     for _, row in actions.iterrows():
