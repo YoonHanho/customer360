@@ -227,10 +227,10 @@ def login_figure(customer_id: str):
 
 
 def product_table(customer_id: str):
-    """해당 고객의 보유상품 중 평가금액 상위 5개 상품을 표시하는 Dash DataTable 생성."""
+    """해당 고객의 보유상품 중 평가금액 상위 10개 상품을 표시하는 Dash DataTable 생성."""
     rows = customer_rows(HOLDINGS, customer_id).sort_values(
         "잔고순위"
-    ).head(5).copy()
+    ).head(10).copy()
     rows["매입금액"] = rows["매입금액"].map(lambda value: f"{value:,.0f}")
     rows["평가금액"] = rows["평가금액"].map(lambda value: f"{value:,.0f}")
     rows["수익률"] = rows["수익률"].map(lambda value: f"{value * 100:+.1f}%")
@@ -247,7 +247,7 @@ def product_table(customer_id: str):
     return dash_table.DataTable(
         data=rows[columns].to_dict("records"),
         columns=[{"name": column, "id": column} for column in columns],
-        page_size=5,
+        page_size=10,
         style_as_list_view=True,
         style_header={"fontWeight": "700", "color": COLORS["muted"], "borderBottom": f"1px solid {COLORS['line']}"},
         style_cell={
@@ -295,7 +295,7 @@ def profile_content(customer_id: str):
 
 
 def asset_content(customer_id: str):
-    """[자산] 탭: 자산 잔고 추이 차트, 자산 비중 도넛 차트 및 보유상품 TOP 5 테이블 배치."""
+    """[자산] 탭: 자산 잔고 추이 차트, 자산 비중 도넛 차트 및 보유상품 TOP 10 테이블 배치."""
     return html.Div(
         [
             html.Div(
@@ -314,7 +314,7 @@ def asset_content(customer_id: str):
             ),
             html.Div(
                 [
-                    html.Div("보유 상품 · 잔고 TOP 5", className="section-heading"),
+                    html.Div("보유 상품 · 잔고 TOP 10", className="section-heading"),
                     product_table(customer_id),
                 ],
                 className="chart-panel wide-panel",

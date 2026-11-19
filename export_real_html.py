@@ -1,7 +1,7 @@
 """실제 데이터(data_real/ 폴더의 CSV 파일)를 기반으로 독립형 오프라인 대시보드 HTML을 내보내는 스크립트.
 
 data_real 디렉터리의 14개 실제 CSV 데이터셋을 불러와 대시보드 모듈(scr002_customer360)에 주입한 뒤,
-인터랙티브 기능이 포함된 오프라인 HTML 파일(customer360_real_offline.html)을 생성합니다.
+인터랙티브 기능(보유 상품 TOP 10 테이블, 차트, 탭 등)이 포함된 오프라인 HTML 파일(customer360_real_offline.html)을 생성합니다.
 """
 
 from __future__ import annotations

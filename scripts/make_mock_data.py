@@ -119,14 +119,29 @@ for customer_index, (customer_id, total) in enumerate(zip(CUSTOMER_IDS, asset_va
             "자산구분": asset_class,
             "비중": round(weight, 4),
         })
+    # 기존 RNG 시퀀스 보존을 위한 더미 호출 (다른 13개 데이터셋의 난수 일치 보장)
+    for asset_index, category_amount in enumerate(amounts):
+        dummy_count = 1 if category_amount < 1_000_000 else (2 if asset_index < 2 else 1)
+        for _ in range(dummy_count):
+            RNG.uniform(-0.06, 0.16)
+
+    # 고객별 최대 10개 상품 분할 (국내주식 3, 해외주식 2, ETF 2, 펀드 1, 채권 1, 기타 1 = 총 10개)
+    counts_by_asset = [3, 2, 2, 1, 1, 1]
+    holdings_rng = random.Random(360 + customer_index * 13)
     for asset_index, (asset_class, category_amount) in enumerate(zip(ASSET_CLASSES, amounts)):
-        product_count = 1 if category_amount < 1_000_000 else (2 if asset_index < 2 else 1)
-        splits = [category_amount // product_count] * product_count
+        target_count = counts_by_asset[asset_index]
+        if target_count == 3:
+            ratios = [0.50, 0.30, 0.20]
+        elif target_count == 2:
+            ratios = [0.60, 0.40]
+        else:
+            ratios = [1.0]
+        splits = [round(category_amount * r) for r in ratios]
         splits[-1] += category_amount - sum(splits)
         for split_index, evaluation in enumerate(splits):
             product_list = PRODUCT_NAMES[asset_class]
             product_name = product_list[(customer_index + asset_index + split_index) % len(product_list)]
-            profit_rate = RNG.uniform(-0.06, 0.16)
+            profit_rate = holdings_rng.uniform(-0.06, 0.16)
             if customer_index == 0 and asset_class == "국내주식" and split_index == 0:
                 product_name = "삼성전자"
                 profit_rate = 0.20

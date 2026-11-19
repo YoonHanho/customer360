@@ -43,6 +43,15 @@ class DashboardDataTests(unittest.TestCase):
         self.assertEqual(self.data["거래금액"].groupby("고객번호").size().unique().tolist(), [60])
         self.assertEqual(self.data["투자수익률"].groupby("고객번호").size().unique().tolist(), [12])
         self.assertEqual(self.data["앱접속일수"].groupby("고객번호").size().unique().tolist(), [12])
+        self.assertEqual(self.data["보유상품"].groupby("고객번호").size().unique().tolist(), [10])
+
+    def test_product_table_shows_top_10(self):
+        assets = tab_content("assets", "12345678")
+        heading = assets.children[2].children[0].children
+        self.assertEqual(heading, "보유 상품 · 잔고 TOP 10")
+        table = assets.children[2].children[1]
+        self.assertEqual(table.page_size, 10)
+        self.assertEqual(len(table.data), 10)
 
     def test_asset_mix_and_customer_example_values(self):
         weights = self.data["자산비중"].groupby("고객번호")["비중"].sum()
